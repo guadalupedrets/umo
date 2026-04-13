@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>umo</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap');
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: #000;
+    font-family: 'Inter', sans-serif;
+    color: #fff;
+    overflow: hidden;
+  }
+
+  .hero {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Fondo simulado hasta que entre el video */
+  .video-bg {
+    position: absolute;
+    inset: 0;
+    background: #0a0a0a;
+    z-index: 0;
+  }
+
+  /* Cuando el video esté disponible, reemplazar por: */
+  /*
+  video.bg-video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 0;
+    opacity: 0.7;
+  }
+  */
+
+  /* Overlay oscuro sobre el video */
+  .overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 1;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 36px 52px;
+  }
+
+  .nav-logo a {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+  }
+
+  .nav-logo img {
+    height: 22px;
+    width: auto;
+    mix-blend-mode: screen;
+  }
+
+  .nav-logo-text {
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: white;
+  }
+
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 44px;
+    list-style: none;
+  }
+
+  .nav-links li a {
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.5);
+    text-decoration: none;
+    transition: color 0.25s;
+  }
+
+  .nav-links li a:hover {
+    color: #fff;
+  }
+
+  /* ── DROPDOWN DIRECTORES ── */
+  .nav-dropdown {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .nav-dropdown > a {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    line-height: 1;
+  }
+
+  .nav-dropdown > a::after {
+    content: '';
+    display: inline-block;
+    width: 5px; height: 5px;
+    border-right: 1px solid rgba(255,255,255,0.4);
+    border-bottom: 1px solid rgba(255,255,255,0.4);
+    transform: rotate(45deg) translateY(-2px);
+    transition: transform 0.2s, border-color 0.25s;
+  }
+  .nav-dropdown:hover > a::after,
+  .nav-dropdown.open > a::after {
+    transform: rotate(-135deg) translateY(-2px);
+    border-color: white;
+  }
+
+  .dropdown-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    padding-top: 20px;
+    background: transparent;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-4px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+  }
+
+  .nav-dropdown:hover .dropdown-menu,
+  .nav-dropdown.open .dropdown-menu {
+    opacity: 1;
+    pointer-events: all;
+    transform: translateY(0);
+  }
+
+  .dropdown-menu-inner {
+    background: rgba(0,0,0,0.95);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.08);
+    min-width: 200px;
+    padding: 8px 0;
+  }
+
+  .dropdown-menu a {
+    display: block;
+    padding: 12px 24px;
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.45);
+    text-decoration: none;
+    transition: color 0.2s, background 0.2s;
+    white-space: nowrap;
+  }
+
+  .dropdown-menu a:hover {
+    color: white;
+    background: rgba(255,255,255,0.04);
+  }
+
+  /* ── HAMBURGUESA ── */
+  .hamburger {
+    display: none;
+    flex-direction: column;
+    gap: 5px;
+    cursor: pointer;
+    padding: 0;
+    background: none;
+    border: none;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+    z-index: 200;
+  }
+  .hamburger span {
+    display: block;
+    width: 22px;
+    height: 2px;
+    background: white;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    transform-origin: center;
+  }
+  .hamburger.active span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
+  .hamburger.active span:nth-child(2) { opacity: 0; }
+  .hamburger.active span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 768px) {
+    nav { padding: 24px 24px; }
+
+    .nav-links {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.97);
+      backdrop-filter: blur(16px);
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 36px;
+      z-index: 150;
+    }
+    .nav-links.open { display: flex; }
+
+    .nav-links li a { font-size: 13px; letter-spacing: 0.2em; }
+
+    /* Item activo en mobile */
+    .nav-links li a.active-page {
+      background: white;
+      color: black;
+      padding: 8px 20px;
+      font-weight: 500;
+    }
+
+    .nav-dropdown {
+      flex-direction: column;
+      align-items: center;
+    }
+    .nav-dropdown > a::after { display: none; }
+
+    .dropdown-menu {
+      position: static;
+      opacity: 1;
+      pointer-events: all;
+      transform: none;
+      background: transparent;
+      padding: 12px 0 0;
+      display: none;
+      text-align: center;
+    }
+    .dropdown-menu-inner {
+      background: transparent;
+      border: none;
+      padding: 0;
+    }
+    .nav-dropdown.open .dropdown-menu { display: block; }
+
+    .dropdown-menu a {
+      color: rgba(255,255,255,0.35) !important;
+      padding: 8px 0 !important;
+    }
+
+    .hamburger { display: flex; position: relative; z-index: 200; }
+  }
+
+  /* ── LOGO CENTRAL ── */
+  .center-logo {
+    position: relative;
+    z-index: 5;
+    animation: fadeUp 1.4s ease forwards;
+    opacity: 0;
+  }
+
+  .center-logo img {
+    width: 240px;
+    height: auto;
+    mix-blend-mode: screen;
+  }
+
+  /* Wordmark SVG como fallback */
+  .center-wordmark {
+    fill: white;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── BOTTOM BAR ── */
+  .bottom-bar {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    z-index: 10;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 0 52px 36px;
+  }
+
+  .tagline {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.25);
+    line-height: 1.8;
+  }
+
+  .scroll-hint {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .scroll-line {
+    width: 1px;
+    height: 36px;
+    background: rgba(255,255,255,0.15);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%,100% { opacity: 0.2; }
+    50%      { opacity: 0.8; }
+  }
+
+  /* Línea separadora nav */
+  .nav-line {
+    position: absolute;
+    top: 92px; left: 0; right: 0;
+    height: 1px;
+    background: rgba(255,255,255,0.07);
+    z-index: 9;
+  }
+
+  /* Nota video */
+  .video-note {
+    position: absolute;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 9px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.12);
+    white-space: nowrap;
+    z-index: 5;
+  }
+</style>
+</head>
+<body>
+
+<section class="hero">
+
+  <div class="video-bg"></div>
+  <!-- VIDEO: cuando tengas el showreel, reemplazá el div.video-bg por: -->
+  <!-- <video class="bg-video" autoplay muted loop playsinline src="tu-video.mp4"></video> -->
+
+  <div class="overlay"></div>
+  <div class="nav-line"></div>
+
+  <!-- NAV -->
+  <nav>
+    <div class="nav-logo">
+      <a href="index.html">
+        <img src="Identidad-Umo-Blanco__1_.png" alt="umo"
+             onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
+        <span class="nav-logo-text" style="display:none">umo</span>
+      </a>
+    </div>
+    <button class="hamburger" id="hamburger" aria-label="Menú">
+      <span></span><span></span><span></span>
+    </button>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="umo-trabajos.html">Trabajos</a></li>
+      <li class="nav-dropdown" id="dirDropdown">
+        <a href="#" onclick="return false;">Directores</a>
+        <div class="dropdown-menu">
+          <div class="dropdown-menu-inner">
+            <a href="director-alan-olmedo.html">Alan Olmedo</a>
+            <a href="director-nombre-prueba.html">Nombre de Prueba</a>
+          </div>
+        </div>
+      </li>
+      <li><a href="nosotros.html">Nosotros</a></li>
+      <li><a href="contacto.html">Contacto</a></li>
+    </ul>
+  </nav>
+
+  <!-- LOGO CENTRAL -->
+  <div class="center-logo">
+    <!-- Logo PNG grande centrado -->
+    <img src="Identidad-Umo-Blanco.png" alt="umo"
+         onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
+    <!-- SVG fallback si no carga la imagen -->
+    <svg style="display:none" width="260" viewBox="0 0 300 95" xmlns="http://www.w3.org/2000/svg">
+      <path class="center-wordmark" d="M0 5 L0 65 Q0 90 25 90 Q50 90 50 65 L50 5 L36 5 L36 65 Q36 76 25 76 Q14 76 14 65 L14 5 Z"/>
+      <path class="center-wordmark" d="M60 5 L60 90 L74 90 L74 35 L93 90 L107 90 L126 35 L126 90 L140 90 L140 5 L124 5 L100 66 L76 5 Z"/>
+      <path class="center-wordmark" d="M155 47.5 Q155 5 192 5 Q229 5 229 47.5 Q229 90 192 90 Q155 90 155 47.5 Z M169 47.5 Q169 76 192 76 Q215 76 215 47.5 Q215 19 192 19 Q169 19 169 47.5 Z"/>
+    </svg>
+  </div>
+
+  <p class="video-note">showreel — shows · videoclips · eventos</p>
+
+  <!-- BOTTOM -->
+  <div class="bottom-bar">
+    <p class="tagline">Productora artística.<br>Argentina · España · México.</p>
+    <div class="scroll-hint">
+      <div class="scroll-line"></div>
+      scroll
+    </div>
+  </div>
+
+</section>
+
+<script>
+  const hamburger = document.getElementById('hamburger');
+  const navLinks = document.getElementById('navLinks');
+  hamburger.addEventListener('click', () => {
+    hamburger.classList.toggle('active');
+    navLinks.classList.toggle('open');
+  });
+
+  const dropdown = document.getElementById('dirDropdown');
+  dropdown.querySelector('a').addEventListener('click', (e) => {
+    e.preventDefault();
+    if (window.innerWidth <= 768) dropdown.classList.toggle('open');
+  });
+
+  navLinks.querySelectorAll('li:not(.nav-dropdown) a').forEach(a => {
+    a.addEventListener('click', () => {
+      hamburger.classList.remove('active');
+      navLinks.classList.remove('open');
+    });
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!dropdown.contains(e.target) && window.innerWidth > 768) {
+      dropdown.classList.remove('open');
+    }
+  });
+</script>
+
+</body>
+</html>
