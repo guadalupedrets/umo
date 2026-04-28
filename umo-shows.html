@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>umo — shows en vivo</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&display=swap');
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { background: #000; font-family: 'Inter', sans-serif; color: #fff; }
+
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 32px 52px;
+    background: rgba(0,0,0,0.85); backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .nav-logo img { height: 20px; width: auto; mix-blend-mode: screen; }
+  .nav-logo-text { font-size: 16px; font-weight: 800; letter-spacing: -0.02em; color: white; }
+  .nav-links { display: flex; align-items: center; gap: 44px; list-style: none; }
+  .nav-links li a { font-size: 11px; font-weight: 400; letter-spacing: 0.15em; text-transform: uppercase; color: rgba(255,255,255,0.4); text-decoration: none; transition: color 0.25s; }
+  .nav-links li a:hover, .nav-links li a.active { color: #fff; }
+  .nav-links li a.active-page { color: #fff; }
+
+  .nav-dropdown { position: relative; display: flex; align-items: center; line-height: 1; }
+  .nav-dropdown > a { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; line-height: 1; vertical-align: middle; }
+  .nav-dropdown > a::after { content: ''; display: inline-block; width: 5px; height: 5px; border-right: 1px solid rgba(255,255,255,0.4); border-bottom: 1px solid rgba(255,255,255,0.4); transform: rotate(45deg); position: relative; top: -2px; transition: transform 0.2s, border-color 0.25s; }
+  .nav-dropdown:hover > a::after, .nav-dropdown.open > a::after { transform: rotate(-135deg); top: 2px; border-color: white; }
+
+  .dropdown-menu { position: absolute; top: 100%; right: 0; padding-top: 20px; background: transparent; opacity: 0; pointer-events: none; transform: translateY(-4px); transition: opacity 0.2s ease, transform 0.2s ease; }
+  .nav-dropdown:hover .dropdown-menu, .nav-dropdown.open .dropdown-menu { opacity: 1; pointer-events: all; transform: translateY(0); }
+  .dropdown-menu-inner { background: rgba(0,0,0,0.95); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.08); min-width: 200px; padding: 8px 0; }
+  .dropdown-menu a { display: block; padding: 12px 24px; font-size: 11px; font-weight: 400; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.45); text-decoration: none; transition: color 0.2s, background 0.2s; white-space: nowrap; }
+  .dropdown-menu a:hover { color: white; background: rgba(255,255,255,0.04); }
+
+  .hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 0; background: none; border: none; outline: none; -webkit-appearance: none; appearance: none; z-index: 200; }
+  .hamburger span { display: block; width: 22px; height: 2px; background: white; transition: transform 0.3s ease, opacity 0.3s ease; transform-origin: center; }
+  .hamburger.active span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
+  .hamburger.active span:nth-child(2) { opacity: 0; }
+  .hamburger.active span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
+
+  .trabajos { padding: 140px 52px 120px; max-width: 1400px; margin: 0 auto; }
+
+  .trabajo-item { display: grid; grid-template-columns: 2fr 1fr; gap: 60px; align-items: center; padding: 80px 0; border-bottom: 1px solid rgba(255,255,255,0.07); opacity: 0; transform: translateY(30px); transition: opacity 0.8s ease, transform 0.8s ease; }
+  .trabajo-item.visible { opacity: 1; transform: translateY(0); }
+  .trabajo-item:last-child { border-bottom: none; }
+  .trabajo-item.reverse { direction: rtl; }
+  .trabajo-item.reverse > * { direction: ltr; }
+
+  .trabajo-video { position: relative; aspect-ratio: 16/9; background: #0f0f0f; overflow: hidden; cursor: pointer; }
+  .trabajo-video::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, #1a1a1a 0%, #050505 100%); }
+  .play-btn { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 2; opacity: 0; transition: opacity 0.3s; }
+  .play-btn svg { width: 48px; height: 48px; fill: rgba(255,255,255,0.8); }
+  .trabajo-video:hover .play-btn { opacity: 1; }
+  .trabajo-video .vid-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.2); z-index: 2; transition: background 0.3s; }
+  .trabajo-video:hover .vid-overlay { background: rgba(0,0,0,0.1); }
+
+  .trabajo-info { display: flex; flex-direction: column; gap: 0; padding: 12px 0; }
+  .trabajo-title { font-size: clamp(18px, 2vw, 28px); font-weight: 600; letter-spacing: -0.01em; line-height: 1.1; color: white; margin-bottom: 10px; }
+  .trabajo-artist { font-size: clamp(12px, 1.1vw, 14px); font-weight: 400; color: rgba(255,255,255,0.45); margin-bottom: 8px; }
+  .trabajo-director { font-size: clamp(10px, 0.9vw, 11px); font-weight: 300; color: rgba(255,255,255,0.2); letter-spacing: 0.08em; text-transform: uppercase; }
+  .trabajo-director span { color: rgba(255,255,255,0.15); margin-right: 6px; }
+
+  .trabajo-mobile-header { display: none; }
+
+  footer { border-top: 1px solid rgba(255,255,255,0.07); padding: 48px 52px; display: flex; justify-content: space-between; align-items: center; }
+  footer .f-logo { font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.4); }
+  footer .f-copy { font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: rgba(255,255,255,0.15); }
+
+  .nav-links li a.active-page { color: #fff; }
+
+  @media (max-width: 768px) {
+    nav { padding: 24px 24px; }
+    .nav-links { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.97); backdrop-filter: blur(16px); flex-direction: column; align-items: center; justify-content: center; gap: 36px; z-index: 150; }
+    .nav-links.open { display: flex; }
+    .nav-links li a { font-size: 13px; letter-spacing: 0.2em; }
+    .nav-links li a.active-page { background: white; color: black; padding: 8px 20px; font-weight: 500; }
+    .nav-dropdown { flex-direction: column; align-items: center; }
+    .nav-dropdown > a::after { display: none; }
+    .dropdown-menu { position: static; opacity: 1; pointer-events: all; transform: none; background: transparent; padding: 12px 0 0; display: none; text-align: center; }
+    .dropdown-menu-inner { background: transparent; border: none; padding: 0; }
+    .nav-dropdown.open .dropdown-menu { display: block; }
+    .dropdown-menu a { color: rgba(255,255,255,0.35) !important; padding: 8px 0 !important; }
+    .hamburger { display: flex; position: relative; z-index: 200; }
+    .trabajos { padding: 100px 20px 80px; }
+    .trabajo-item { display: flex; flex-direction: column; align-items: flex-start; gap: 0; padding: 48px 0; }
+    .trabajo-item.reverse { direction: ltr; }
+    .trabajo-info { display: none; }
+    .trabajo-mobile-header { display: flex; flex-direction: column; gap: 2px; padding-bottom: 12px; align-self: flex-start; width: 100%; }
+    .trabajo-mobile-title { font-size: 13px; font-weight: 600; color: white; letter-spacing: -0.01em; }
+    .trabajo-mobile-title .dash { color: rgba(255,255,255,0.3); margin: 0 6px; }
+    .trabajo-mobile-artist { font-size: 13px; font-weight: 400; color: rgba(255,255,255,0.5); display: inline; }
+    .trabajo-mobile-director { font-size: 10px; font-weight: 300; color: rgba(255,255,255,0.25); letter-spacing: 0.08em; text-transform: uppercase; padding-top: 10px; }
+    .trabajo-mobile-director span { color: rgba(255,255,255,0.15); margin-right: 4px; }
+    .trabajo-video { width: 100%; align-self: flex-start; }
+    footer { padding: 32px 24px; flex-direction: column; gap: 12px; text-align: center; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">
+    <a href="index.html" style="display:flex; align-items:center; text-decoration:none;">
+      <img src="Identidad-Umo-Blanco__1_.png" alt="umo" onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
+      <span class="nav-logo-text" style="display:none">umo</span>
+    </a>
+  </div>
+  <button class="hamburger" id="hamburger" aria-label="Menú">
+    <span></span><span></span><span></span>
+  </button>
+  <ul class="nav-links" id="navLinks">
+    <li class="nav-dropdown" id="trabDropdown">
+      <a href="#" onclick="return false;" class="active-page">Proyectos</a>
+      <div class="dropdown-menu">
+        <div class="dropdown-menu-inner">
+          <a href="umo-shows.html">Shows en vivo</a>
+          <a href="umo-videoclips.html">Videoclips</a>
+          <a href="umo-publicidad.html">Publicidad</a>
+        </div>
+      </div>
+    </li>
+    <li class="nav-dropdown" id="dirDropdown">
+      <a href="#" onclick="return false;">Directores</a>
+      <div class="dropdown-menu">
+        <div class="dropdown-menu-inner">
+          <a href="director-alan-olmedo.html">Alan Olmedo</a>
+          <a href="director-nombre-prueba.html">Nombre de Prueba</a>
+        </div>
+      </div>
+    </li>
+    <li><a href="nosotros.html">Nosotros</a></li>
+    <li><a href="contacto.html">Contacto</a></li>
+  </ul>
+</nav>
+
+<section class="trabajos">
+
+  <div class="trabajo-item">
+    <div class="trabajo-mobile-header">
+      <div><span class="trabajo-mobile-title">Nombre del show<span class="dash">—</span></span><span class="trabajo-mobile-artist">Artista</span></div>
+      <p class="trabajo-mobile-director"><span>Dir.</span> Nombre del director</p>
+    </div>
+    <div class="trabajo-video">
+      <div class="vid-overlay"></div>
+      <div class="play-btn"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+    </div>
+    <div class="trabajo-info">
+      <h2 class="trabajo-title">Nombre del show</h2>
+      <p class="trabajo-artist">Artista</p>
+      <p class="trabajo-director"><span>Dir.</span> Nombre del director</p>
+    </div>
+  </div>
+
+  <div class="trabajo-item reverse">
+    <div class="trabajo-mobile-header">
+      <div><span class="trabajo-mobile-title">Nombre del show<span class="dash">—</span></span><span class="trabajo-mobile-artist">Artista</span></div>
+      <p class="trabajo-mobile-director"><span>Dir.</span> Nombre del director</p>
+    </div>
+    <div class="trabajo-video">
+      <div class="vid-overlay"></div>
+      <div class="play-btn"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+    </div>
+    <div class="trabajo-info">
+      <h2 class="trabajo-title">Nombre del show</h2>
+      <p class="trabajo-artist">Artista</p>
+      <p class="trabajo-director"><span>Dir.</span> Nombre del director</p>
+    </div>
+  </div>
+
+  <div class="trabajo-item">
+    <div class="trabajo-mobile-header">
+      <div><span class="trabajo-mobile-title">Nombre del show<span class="dash">—</span></span><span class="trabajo-mobile-artist">Artista</span></div>
+      <p class="trabajo-mobile-director"><span>Dir.</span> Nombre del director</p>
+    </div>
+    <div class="trabajo-video">
+      <div class="vid-overlay"></div>
+      <div class="play-btn"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+    </div>
+    <div class="trabajo-info">
+      <h2 class="trabajo-title">Nombre del show</h2>
+      <p class="trabajo-artist">Artista</p>
+      <p class="trabajo-director"><span>Dir.</span> Nombre del director</p>
+    </div>
+  </div>
+
+</section>
+
+<footer>
+  <div class="f-logo">umo</div>
+  <p class="f-copy">Argentina · España · México</p>
+</footer>
+
+<script>
+  const hamburger = document.getElementById('hamburger');
+  const navLinks = document.getElementById('navLinks');
+  hamburger.addEventListener('click', () => {
+    hamburger.classList.toggle('active');
+    navLinks.classList.toggle('open');
+  });
+
+  const dropdowns = document.querySelectorAll('.nav-dropdown');
+  dropdowns.forEach(dd => {
+    dd.querySelector('a').addEventListener('click', (e) => {
+      e.preventDefault();
+      if (window.innerWidth <= 768) dd.classList.toggle('open');
+    });
+  });
+
+  navLinks.querySelectorAll('li:not(.nav-dropdown) a').forEach(a => {
+    a.addEventListener('click', () => {
+      hamburger.classList.remove('active');
+      navLinks.classList.remove('open');
+    });
+  });
+
+  document.addEventListener('click', (e) => {
+    if (window.innerWidth > 768) {
+      dropdowns.forEach(dd => {
+        if (!dd.contains(e.target)) dd.classList.remove('open');
+      });
+    }
+  });
+
+  const items = document.querySelectorAll('.trabajo-item');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('visible'); });
+  }, { threshold: 0.15 });
+  items.forEach(item => observer.observe(item));
+</script>
+</body>
+</html>
